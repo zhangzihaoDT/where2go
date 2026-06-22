@@ -10,7 +10,44 @@ function renderPreference(pref: string): string {
   return PREFERENCE_LABELS[pref as keyof typeof PREFERENCE_LABELS] || pref;
 }
 
-function getPreferenceInstruction(preference: Preference): string {
+function getTrafficTimeRules(tripDays: number): string[] {
+  if (tripDays <= 1) {
+    return [
+      "单天行程只推荐单程交通时间在 2 小时以内的目的地",
+      "不推荐中远程目的地",
+    ];
+  }
+  if (tripDays <= 2) {
+    return [
+      `${tripDays} 天行程不推荐单程交通时间过长的目的地`,
+      "建议优先考虑高铁 3 小时圈内的目的地",
+    ];
+  }
+  if (tripDays <= 3) {
+    return [
+      `${tripDays} 天行程可以接受中等交通距离`,
+      "建议优先考虑高铁 4–5 小时圈或短途飞行可达的目的地",
+    ];
+  }
+  if (tripDays <= 5) {
+    return [
+      `${tripDays} 天行程可以接受较长交通距离`,
+      "国内大部分目的地均可考虑，但建议单程交通时间控制在 6 小时内",
+    ];
+  }
+  return [
+    `${tripDays} 天行程适合长途旅行`,
+    "可以接受较长的交通时间，包括偏远或边疆目的地",
+  ];
+}
+
+function getPlayTimeRules(tripDays: number): string[] {
+  return [
+    `如果目的地核心景点需要 ${tripDays + 2} 天以上才能玩好，不要推荐给 ${tripDays} 天行程`,
+  ];
+}
+
+function getPreferenceInstruction(preference: Preference, tripDays: number): string {
   switch (preference) {
     case "value":
       return [
@@ -29,7 +66,8 @@ function getPreferenceInstruction(preference: Preference): string {
         "",
       ].join("\n");
 
-    case "comfort":
+    case "comfort": {
+      const maxHours = tripDays <= 1 ? 2 : tripDays === 2 ? 4 : tripDays === 3 ? 5 : tripDays <= 5 ? 6 : 7;
       return [
         "## 偏好补充说明：短途舒适优先",
         "",
@@ -39,12 +77,12 @@ function getPreferenceInstruction(preference: Preference): string {
         "",
         "判断时请更严格看待交通时间：",
         "",
-        "- 2 天行程，不推荐单程交通时间超过 4 小时的目的地",
-        "- 3 天行程，谨慎推荐单程交通时间超过 5 小时的目的地",
+        `- ${tripDays} 天行程，不推荐单程交通时间超过 ${maxHours} 小时的目的地`,
         "- 如果目的地需要频繁换乘，或景点非常分散，应降低推荐优先级",
         "- 不要为了目的地名气牺牲行程舒适度",
         "",
       ].join("\n");
+    }
 
     case "strong_destination":
       return [
@@ -74,7 +112,7 @@ function getPreferenceInstruction(preference: Preference): string {
         "判断时请注意：",
         "",
         "- 不要只推荐传统热门旅游城市",
-        "- 如果小众目的地酒店涨幅低、交通舒适、2–3 天可消化，应优先推荐",
+        `- 如果小众目的地酒店涨幅低、交通舒适、${tripDays} 天可消化，应优先推荐`,
         "- 请说明它为什么相对冷门，以及核心体验是什么",
         "- 冷门不等于偏远，如果交通时间过长，仍然需要降级",
         "",
@@ -104,20 +142,24 @@ function getCandidatePoolNote(mode: CandidateSelectionMode): string {
 }
 
 export function buildWhere2GoPrompt(input: PromptBuilderInput): string {
-  const { originCity, tripDays, holidayName, preference, candidates, selectionMode } = input;
+  const { originCity, tripDays, holidayName, holidayNames, preference, candidates, selectionMode } = input;
+
+  const holidaySection = holidayNames.length > 0
+    ? `本次出行时段覆盖以下节假日：${holidayNames.join("、")}，请在搜索时优先参考该时段的实时价格。`
+    : "本次出行时段为普通周末，请在搜索时按常规周末价格估算，非节假日调价。";
 
   return [
     "# 假期去哪儿搜索任务",
     "",
     "你是一个旅行价格与行程分析助手。",
     "",
-    "请基于实时搜索结果，帮我从候选目的地中筛选适合假期出行的 TOP5。",
+    "请基于实时搜索结果，帮我从候选目的地中筛选适合出行的 TOP5。",
     "",
     "## 用户输入",
     "",
     `- 出发地：${originCity}`,
     `- 旅行时长：${tripDays} 天`,
-    `- 假期类型：${holidayName}`,
+    `- ${holidaySection}`,
     `- 偏好：${renderPreference(preference)}`,
     "",
     "## 候选目的地",
@@ -149,10 +191,7 @@ export function buildWhere2GoPrompt(input: PromptBuilderInput): string {
     "推荐目的地必须考虑离出发地的距离。",
     "",
     "请判断：",
-    "- 单程交通时间是否适合本次旅行天数",
-    "- 2 天行程不推荐单程交通时间过长的目的地",
-    "- 3 天行程可以接受中等交通距离",
-    "- 4 天以上才适合明显长线目的地",
+    ...getTrafficTimeRules(tripDays).map((r) => `- ${r}`),
     "",
     "### 4. 游玩时间",
     "",
@@ -161,19 +200,19 @@ export function buildWhere2GoPrompt(input: PromptBuilderInput): string {
     "请判断：",
     "- 当地核心景点是否集中",
     `- 是否适合 ${tripDays} 天游玩`,
-    "- 如果目的地本身需要 4–5 天才能玩好，不要推荐给短假",
+    ...getPlayTimeRules(tripDays).map((r) => `- ${r}`),
     "- 如果景点太分散，也要降低推荐优先级",
     "",
-    getPreferenceInstruction(preference),
+    getPreferenceInstruction(preference, tripDays),
     "## 请搜索并估算以下信息",
     "",
     "请针对候选目的地逐个检索或估算：",
     "",
     "- 平日酒店价格",
-    `- ${holidayName}酒店价格`,
+    `- ${holidayName}期间酒店价格`,
     "- 酒店涨幅",
     "- 平日往返机票价格，如高铁更合适可填无",
-    `- ${holidayName}往返机票价格，如高铁更合适可填无`,
+    `- ${holidayName}期间往返机票价格，如高铁更合适可填无`,
     "- 机票涨幅",
     "- 最合适交通方式",
     "- 单程交通时间",

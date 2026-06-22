@@ -28,9 +28,9 @@ export function CopyButton({ text }: { text: string }) {
   return (
     <button
       onClick={handleCopy}
-      className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-blue-900 text-white hover:bg-blue-800"
+      className="zh-btn-primary inline-flex items-center gap-1.5 px-3.5 py-2 text-sm"
     >
-      {copied ? "✅ 已复制" : "📋 复制到剪贴板"}
+      {copied ? "已复制" : "复制"}
     </button>
   );
 }
@@ -51,9 +51,9 @@ export function DownloadButton({ text, filename }: { text: string; filename: str
   return (
     <button
       onClick={handleDownload}
-      className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-white border border-gray-300 text-gray-700 hover:bg-gray-50"
+      className="zh-btn-ghost inline-flex items-center gap-1.5 px-3.5 py-2 text-sm"
     >
-      ⬇ 下载 .md
+      下载 .md
     </button>
   );
 }

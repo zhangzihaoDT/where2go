@@ -2,8 +2,78 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --zh-blue: #174A7C;
+  --zh-deep-blue: #06213D;
+  --zh-cyan: #7ECDEB;
+  --zh-light-blue: #DDEFF8;
+  --zh-cream: #FFF9EF;
+  --zh-raccoon-gold: #D79A36;
+  --zh-brown: #7A4A24;
+  --zh-text: #1F2D3D;
+  --zh-muted: #6B7C8F;
+  --zh-card: #FFFFFF;
+}
+
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
   -webkit-font-smoothing: antialiased;
+  background-color: var(--zh-cream);
+  background-image:
+    radial-gradient(ellipse at 15% 20%, rgba(222, 239, 248, 0.6) 0%, transparent 50%),
+    radial-gradient(ellipse at 85% 80%, rgba(215, 154, 54, 0.08) 0%, transparent 50%);
+  color: var(--zh-text);
+}
+
+.zh-card {
+  background-color: var(--zh-card);
+  border: 1px solid rgba(111, 124, 143, 0.12);
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(6, 33, 61, 0.06), 0 1px 2px rgba(6, 33, 61, 0.04);
+}
+
+.zh-btn-primary {
+  background-color: var(--zh-blue);
+  color: white;
+  border-radius: 8px;
+  font-weight: 500;
+  transition: all 0.15s ease;
+}
+
+.zh-btn-primary:hover {
+  background-color: #0f3a5f;
+}
+
+.zh-btn-primary:disabled {
+  background-color: #c8d0d8;
+  color: #8a9aa8;
+}
+
+.zh-btn-ghost {
+  background-color: transparent;
+  color: var(--zh-muted);
+  border: 1px solid rgba(111, 124, 143, 0.2);
+  border-radius: 8px;
+  font-weight: 500;
+  transition: all 0.15s ease;
+}
+
+.zh-btn-ghost:hover {
+  background-color: rgba(222, 239, 248, 0.5);
+  color: var(--zh-blue);
+}
+
+.zh-input {
+  border: 1px solid rgba(111, 124, 143, 0.2);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 0.875rem;
+  transition: all 0.15s ease;
+}
+
+.zh-input:focus {
+  outline: none;
+  border-color: var(--zh-blue);
+  box-shadow: 0 0 0 3px rgba(23, 74, 124, 0.1);
 }

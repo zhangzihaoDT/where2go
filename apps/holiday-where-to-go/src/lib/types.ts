@@ -12,6 +12,7 @@ export type PromptBuilderInput = {
   originCity: string;
   tripDays: number;
   holidayName: string;
+  holidayNames: string[];
   preference: Preference;
   candidates: CandidateDestination[];
   selectionMode: CandidateSelectionMode;

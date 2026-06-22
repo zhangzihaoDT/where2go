@@ -1,8 +1,9 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { CandidateDestination, Preference, CandidateSelectionMode } from "./lib/types";
 import { buildWhere2GoPrompt } from "./lib/buildPrompt";
 import { loadCandidates } from "./data/destinations";
 import { selectCandidates } from "./lib/selectCandidates";
+import { computeTripDays, detectHolidays, formatHolidayLabel } from "./lib/holidays";
 import { PromptBuilderForm } from "./components/PromptBuilderForm";
 import { CandidatePreview } from "./components/CandidatePreview";
 import { PromptPreview } from "./components/PromptPreview";
@@ -11,14 +12,28 @@ const allCandidates = loadCandidates();
 
 export default function App() {
   const [originCity, setOriginCity] = useState("上海");
-  const [tripDays, setTripDays] = useState(3);
-  const [holidayName, setHolidayName] = useState("端午");
+  const [startDate, setStartDate] = useState("2026-06-25");
+  const [endDate, setEndDate] = useState("2026-06-27");
   const [candidateLimit, setCandidateLimit] = useState(30);
   const [preference, setPreference] = useState<Preference>("value");
   const [selectionMode, setSelectionMode] = useState<CandidateSelectionMode>("smart");
   const [selected, setSelected] = useState<CandidateDestination[]>([]);
   const [prompt, setPrompt] = useState("");
   const [generated, setGenerated] = useState(false);
+  const [holidayName, setHolidayName] = useState("");
+
+  const tripDays = useMemo(
+    () => (startDate && endDate ? computeTripDays(startDate, endDate) : 0),
+    [startDate, endDate],
+  );
+
+  const effectiveHolidayName =
+    holidayName || (startDate && endDate ? formatHolidayLabel(detectHolidays(startDate, endDate)) : "普通周末");
+
+  const detectedHolidayNames = useMemo(
+    () => (startDate && endDate ? detectHolidays(startDate, endDate).map((h) => h.name) : []),
+    [startDate, endDate],
+  );
 
   const handleGenerate = useCallback(() => {
     const picked = selectCandidates({
@@ -33,14 +48,15 @@ export default function App() {
     const result = buildWhere2GoPrompt({
       originCity,
       tripDays,
-      holidayName,
+      holidayName: effectiveHolidayName,
+      holidayNames: detectedHolidayNames,
       preference,
       candidates: picked,
       selectionMode,
     });
     setPrompt(result);
     setGenerated(true);
-  }, [originCity, tripDays, holidayName, preference, candidateLimit, selectionMode]);
+  }, [originCity, tripDays, effectiveHolidayName, detectedHolidayNames, preference, candidateLimit, selectionMode]);
 
   const handleClear = useCallback(() => {
     setPrompt("");
@@ -49,69 +65,72 @@ export default function App() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50/50 via-white to-amber-50/30">
-      <div className="max-w-6xl mx-auto px-4 py-8">
+    <div className="min-h-screen" style={{ backgroundColor: "#FFF9EF" }}>
+      <div className="max-w-xl mx-auto px-4 py-8">
         {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-blue-900 tracking-tight">
-            假期去哪儿 <span className="text-blue-600">Prompt Builder</span>
+        <div className="flex flex-col items-center text-center mb-8">
+          <img src="/brand/raccoon_avatar_light.png" alt="" className="w-12 h-12 mb-3" />
+          <h1 className="text-2xl font-bold tracking-tight" style={{ color: "#174A7C" }}>
+            假期去哪儿
           </h1>
-          <p className="mt-2 text-gray-500 max-w-2xl mx-auto text-sm">
-            输入出发地和旅行天数，生成一段可以交给 ChatGPT / DeepSeek 搜索的旅行决策 Prompt。
+          <p className="text-xs mt-1" style={{ color: "#6B7C8F" }}>
+            Prompt Builder — 用数据、AI 和一点点常识，研究复杂世界
           </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left: Form */}
-          <div className="lg:col-span-1">
-            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
-              <PromptBuilderForm
-                originCity={originCity}
-                setOriginCity={setOriginCity}
-                tripDays={tripDays}
-                setTripDays={setTripDays}
-                holidayName={holidayName}
-                setHolidayName={setHolidayName}
-                candidateLimit={candidateLimit}
-                setCandidateLimit={setCandidateLimit}
-                preference={preference}
-                setPreference={setPreference}
-                selectionMode={selectionMode}
-                setSelectionMode={setSelectionMode}
-                onGenerate={handleGenerate}
-              />
-            </div>
-
-            {selected.length > 0 && (
-              <div className="mt-4">
-                <CandidatePreview
-                  candidates={selected}
-                  limit={candidateLimit}
-                  total={allCandidates.length}
-                />
-              </div>
-            )}
-          </div>
-
-          {/* Right: Prompt Output */}
-          <div className="lg:col-span-2">
-            {generated ? (
-              <PromptPreview prompt={prompt} onClear={handleClear} />
-            ) : (
-              <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-12 text-center text-gray-400">
-                <div className="text-5xl mb-4">✏</div>
-                <p className="text-sm">填写左侧表单后点击「生成 Prompt」</p>
-                <p className="text-xs mt-1 text-gray-300">
-                  本站不直接查询实时价格。实时搜索交给 ChatGPT / DeepSeek，本工具只负责把判断标准和候选目的地组织成高质量 Prompt。
-                </p>
-              </div>
-            )}
-          </div>
+        {/* Form Card */}
+        <div className="zh-card p-6">
+          <PromptBuilderForm
+            originCity={originCity}
+            setOriginCity={setOriginCity}
+            startDate={startDate}
+            setStartDate={setStartDate}
+            endDate={endDate}
+            setEndDate={setEndDate}
+            holidayName={holidayName}
+            setHolidayName={setHolidayName}
+            candidateLimit={candidateLimit}
+            setCandidateLimit={setCandidateLimit}
+            preference={preference}
+            setPreference={setPreference}
+            selectionMode={selectionMode}
+            setSelectionMode={setSelectionMode}
+            onGenerate={handleGenerate}
+          />
         </div>
 
+        {/* Candidate List */}
+        {selected.length > 0 && (
+          <div className="mt-5">
+            <CandidatePreview
+              candidates={selected}
+              limit={candidateLimit}
+              total={allCandidates.length}
+            />
+          </div>
+        )}
+
+        {/* Prompt Output */}
+        {generated ? (
+          <div className="mt-5">
+            <PromptPreview prompt={prompt} onClear={handleClear} />
+          </div>
+        ) : (
+          <div className="zh-card mt-5 p-10 text-center flex flex-col items-center justify-center min-h-[200px]">
+            <img src="/brand/raccoon_avatar_light.png" alt="" className="w-14 h-14 mb-3 opacity-30" />
+            <p className="text-sm" style={{ color: "#6B7C8F" }}>填写表单后点击「生成 Prompt」</p>
+            <p className="text-xs mt-1.5" style={{ color: "#8A9AA8" }}>
+              本站不直接查询实时价格
+            </p>
+          </div>
+        )}
+
         {/* Footer */}
-        <div className="text-center mt-10 pb-4 text-xs text-gray-400">
-          假期去哪儿 Prompt Builder · 候选数据来自精品民宿榜单（131 个目的地）
+        <div className="flex items-center justify-center gap-2 mt-8 pb-4">
+          <img src="/brand/zihao_signature_transparent.png" alt="" className="h-4" />
+          <span className="text-xs" style={{ color: "#8A9AA8" }}>
+            候选数据来自精品民宿榜单（131 个目的地）
+          </span>
         </div>
       </div>
     </div>

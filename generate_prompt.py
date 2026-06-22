@@ -178,64 +178,105 @@ PREFERENCE_LABELS = {
     "hidden_gem": "冷门目的地优先",
 }
 
-PREFERENCE_INSTRUCTIONS: dict[str, str] = {
-    "value": (
-        "## 偏好补充说明：性价比优先\n"
-        "\n"
-        "用户本次偏好是「性价比优先」。\n"
-        "\n"
-        "请优先推荐酒店涨幅低、交通价格波动小、整体花费稳定的目的地。\n"
-        "\n"
-        "判断时请更严格看待价格涨幅：\n"
-        "\n"
-        "- 酒店涨幅 ≤25% 的目的地优先进入 TOP5\n"
-        "- 酒店涨幅 25%–50% 的目的地，只有在体验明显更强时才可以推荐\n"
-        "- 酒店涨幅 >50% 的目的地默认不推荐\n"
-        "- 如果一个目的地名气一般，但酒店和交通价格稳定，可以优先推荐\n"
-    ),
-    "comfort": (
-        "## 偏好补充说明：短途舒适优先\n"
-        "\n"
-        "用户本次偏好是「短途舒适优先」。\n"
-        "\n"
-        "请优先推荐交通时间短、换乘少、当地景点集中、行程不赶的目的地。\n"
-        "\n"
-        "判断时请更严格看待交通时间：\n"
-        "\n"
-        "- 2 天行程，不推荐单程交通时间超过 4 小时的目的地\n"
-        "- 3 天行程，谨慎推荐单程交通时间超过 5 小时的目的地\n"
-        "- 如果目的地需要频繁换乘，或景点非常分散，应降低推荐优先级\n"
-        "- 不要为了目的地名气牺牲行程舒适度\n"
-    ),
-    "strong_destination": (
-        "## 偏好补充说明：强目的地优先\n"
-        "\n"
-        "用户本次偏好是「强目的地优先」。\n"
-        "\n"
-        "如果目的地本身体验足够强，可以适度接受更高的酒店涨幅，但必须说明为什么值得。\n"
-        "\n"
-        "判断时请注意：\n"
-        "\n"
-        "- 酒店涨幅 ≤25% 仍然是最优\n"
-        "- 酒店涨幅 25%–50% 可以进入 TOP5，但必须说明目的地强在哪里\n"
-        "- 酒店涨幅 >50% 默认不推荐，除非有非常强的旅行理由\n"
-        "- 不能只因为目的地热门就推荐，必须同时考虑交通时间和游玩时间是否适配\n"
-    ),
-    "hidden_gem": (
-        "## 偏好补充说明：冷门目的地优先\n"
-        "\n"
-        "用户本次偏好是「冷门目的地优先」。\n"
-        "\n"
-        "请优先挖掘假期涨价不明显、游客密度相对低、但体验完整的目的地。\n"
-        "\n"
-        "判断时请注意：\n"
-        "\n"
-        "- 不要只推荐传统热门旅游城市\n"
-        "- 如果小众目的地酒店涨幅低、交通舒适、2–3 天可消化，应优先推荐\n"
-        "- 请说明它为什么相对冷门，以及核心体验是什么\n"
-        "- 冷门不等于偏远，如果交通时间过长，仍然需要降级\n"
-    ),
-}
+def _get_traffic_time_rules(trip_days: int) -> list[str]:
+    if trip_days <= 1:
+        return [
+            "单天行程只推荐单程交通时间在 2 小时以内的目的地",
+            "不推荐中远程目的地",
+        ]
+    if trip_days <= 2:
+        return [
+            f"{trip_days} 天行程不推荐单程交通时间过长的目的地",
+            "建议优先考虑高铁 3 小时圈内的目的地",
+        ]
+    if trip_days <= 3:
+        return [
+            f"{trip_days} 天行程可以接受中等交通距离",
+            "建议优先考虑高铁 4–5 小时圈或短途飞行可达的目的地",
+        ]
+    if trip_days <= 5:
+        return [
+            f"{trip_days} 天行程可以接受较长交通距离",
+            "国内大部分目的地均可考虑，但建议单程交通时间控制在 6 小时内",
+        ]
+    return [
+        f"{trip_days} 天行程适合长途旅行",
+        "可以接受较长的交通时间，包括偏远或边疆目的地",
+    ]
+
+
+def _get_play_time_rules(trip_days: int) -> list[str]:
+    return [
+        f"如果目的地核心景点需要 {trip_days + 2} 天以上才能玩好，不要推荐给 {trip_days} 天行程",
+    ]
+
+
+def _get_preference_instruction(preference: str, trip_days: int) -> str:
+    if preference == "value":
+        return (
+            "## 偏好补充说明：性价比优先\n"
+            "\n"
+            "用户本次偏好是「性价比优先」。\n"
+            "\n"
+            "请优先推荐酒店涨幅低、交通价格波动小、整体花费稳定的目的地。\n"
+            "\n"
+            "判断时请更严格看待价格涨幅：\n"
+            "\n"
+            "- 酒店涨幅 ≤25% 的目的地优先进入 TOP5\n"
+            "- 酒店涨幅 25%–50% 的目的地，只有在体验明显更强时才可以推荐\n"
+            "- 酒店涨幅 >50% 的目的地默认不推荐\n"
+            "- 如果一个目的地名气一般，但酒店和交通价格稳定，可以优先推荐\n"
+        )
+
+    if preference == "comfort":
+        max_hours = 2 if trip_days <= 1 else 4 if trip_days == 2 else 5 if trip_days == 3 else 6 if trip_days <= 5 else 7
+        return (
+            "## 偏好补充说明：短途舒适优先\n"
+            "\n"
+            "用户本次偏好是「短途舒适优先」。\n"
+            "\n"
+            "请优先推荐交通时间短、换乘少、当地景点集中、行程不赶的目的地。\n"
+            "\n"
+            "判断时请更严格看待交通时间：\n"
+            "\n"
+            f"- {trip_days} 天行程，不推荐单程交通时间超过 {max_hours} 小时的目的地\n"
+            "- 如果目的地需要频繁换乘，或景点非常分散，应降低推荐优先级\n"
+            "- 不要为了目的地名气牺牲行程舒适度\n"
+        )
+
+    if preference == "strong_destination":
+        return (
+            "## 偏好补充说明：强目的地优先\n"
+            "\n"
+            "用户本次偏好是「强目的地优先」。\n"
+            "\n"
+            "如果目的地本身体验足够强，可以适度接受更高的酒店涨幅，但必须说明为什么值得。\n"
+            "\n"
+            "判断时请注意：\n"
+            "\n"
+            "- 酒店涨幅 ≤25% 仍然是最优\n"
+            "- 酒店涨幅 25%–50% 可以进入 TOP5，但必须说明目的地强在哪里\n"
+            "- 酒店涨幅 >50% 默认不推荐，除非有非常强的旅行理由\n"
+            "- 不能只因为目的地热门就推荐，必须同时考虑交通时间和游玩时间是否适配\n"
+        )
+
+    if preference == "hidden_gem":
+        return (
+            "## 偏好补充说明：冷门目的地优先\n"
+            "\n"
+            "用户本次偏好是「冷门目的地优先」。\n"
+            "\n"
+            "请优先挖掘假期涨价不明显、游客密度相对低、但体验完整的目的地。\n"
+            "\n"
+            "判断时请注意：\n"
+            "\n"
+            "- 不要只推荐传统热门旅游城市\n"
+            f"- 如果小众目的地酒店涨幅低、交通舒适、{trip_days} 天可消化，应优先推荐\n"
+            "- 请说明它为什么相对冷门，以及核心体验是什么\n"
+            "- 冷门不等于偏远，如果交通时间过长，仍然需要降级\n"
+        )
+
+    return ""
 
 
 def build_prompt(
@@ -302,22 +343,20 @@ def build_prompt(
     lines.append("### 3. 交通时间")
     lines.append("")
     lines.append("- 推荐目的地必须考虑离出发地的距离")
-    lines.append("- 2 天行程不推荐单程交通时间过长的目的地")
-    lines.append("- 3 天行程可以接受中等交通距离")
-    lines.append("- 4 天以上才适合明显长线目的地")
+    for rule in _get_traffic_time_rules(trip_days):
+        lines.append(f"- {rule}")
     lines.append("")
 
     lines.append("### 4. 游玩时间")
     lines.append("")
     lines.append("- 必须考虑当地核心景点需要多少时间消化")
-    lines.append("- 如果目的地本身需要 4–5 天才能玩好，不要推荐给 2–3 天短假")
+    for rule in _get_play_time_rules(trip_days):
+        lines.append(f"- {rule}")
     lines.append("- 如果景点太分散，也要降低推荐优先级")
     lines.append("")
 
     # ── Preference Instruction ──
-    instruction = PREFERENCE_INSTRUCTIONS.get(preference)
-    if instruction:
-        lines.append(instruction)
+    lines.append(_get_preference_instruction(preference, trip_days))
 
     # ── Required Information ──
     lines.append("## 需要搜索的信息\n")
