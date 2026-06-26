@@ -1,4 +1,5 @@
 import { CandidateDestination } from "../lib/types";
+import { getCityGeocode } from "./cityGeocode";
 
 const rawDestinations = [
   {"name":"AZARA游牧·阿坝遗丘","location":"四川省阿坝州"},
@@ -134,14 +135,45 @@ const rawDestinations = [
   {"name":"卓邸康钦","location":"四川省阿坝州"}
 ];
 
-let nextId = 1;
+function extractProvince(location: string): string {
+  for (const p of ["新疆维吾尔自治区", "广西壮族自治区", "内蒙古自治区", "宁夏回族自治区", "西藏自治区"]) {
+    if (location.startsWith(p)) return p;
+  }
+  for (const p of ["北京", "上海", "天津", "重庆"]) {
+    if (location.startsWith(p)) return p;
+  }
+  for (const p of ["广东", "浙江", "江苏", "福建", "云南", "四川", "贵州", "陕西", "安徽",
+    "江西", "湖南", "湖北", "河南", "山东", "山西", "河北", "辽宁", "吉林", "黑龙江",
+    "甘肃", "青海", "海南", "西藏", "新疆", "广西", "内蒙古", "宁夏"]) {
+    if (location.startsWith(p)) return p;
+  }
+  return location;
+}
+
+function extractCity(location: string): string {
+  const parts = location.replace(/^(新疆维吾尔自治区|广西壮族自治区|内蒙古自治区|宁夏回族自治区|西藏自治区)/, "").trim();
+  const match = parts.match(/([^省]+?(?:市|州|区|县))/);
+  return match ? match[1] : parts;
+}
 
 export function loadCandidates(): CandidateDestination[] {
-  return rawDestinations.map((d) => ({
-    id: `d${nextId++}`,
-    name: d.name,
-    location: d.location,
-  }));
+  return rawDestinations.map((d, i) => {
+    const geo = getCityGeocode(d.location);
+    const province = extractProvince(d.location);
+    const city = extractCity(d.location);
+    return {
+      id: `d${i + 1}`,
+      name: d.name,
+      location: d.location,
+      province,
+      city,
+      lat: geo?.lat,
+      lng: geo?.lng,
+      geoLevel: geo ? "city" as const : "unknown" as const,
+      geoSource: geo ? "cityGeocode" : "none",
+      geoConfidence: geo ? "high" as const : "low" as const,
+    } satisfies CandidateDestination;
+  });
 }
 
 export function pickRandom(candidates: CandidateDestination[], count: number): CandidateDestination[] {

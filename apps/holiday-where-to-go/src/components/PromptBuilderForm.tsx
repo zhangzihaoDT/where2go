@@ -101,13 +101,35 @@ export function PromptBuilderForm({
             className="zh-input flex-1 w-full"
           />
         </div>
-        {tripDays > 0 && (
+        {tripDays > 0 ? (
           <div className="mt-2 flex gap-3 text-xs">
-            <span style={{ color: "#174A7C", fontWeight: 500 }}>共 {tripDays} 天</span>
+            <span style={{ color: "#174A7C", fontWeight: 500 }}>共 {tripDays} 天 {tripDays - 1} 晚</span>
             <span style={{ color: "#D79A36", fontWeight: 500 }}>{label}</span>
           </div>
+        ) : startDate && endDate && new Date(endDate) < new Date(startDate) ? (
+          <p className="text-xs mt-1" style={{ color: "#D79A36" }}>返程日期不能早于出发日期</p>
+        ) : (
+          <p className="text-xs mt-1" style={{ color: "#8A9AA8" }}>请选择出发和返程日期</p>
         )}
       </div>
+
+      {tripDays > 0 && (
+        <div>
+          <label className="block text-sm font-medium mb-1.5" style={{ color: "#1F2D3D" }}>
+            假期名称 <span className="text-xs" style={{ color: "#8A9AA8" }}>（可选，留空则自动检测）</span>
+          </label>
+          <input
+            type="text"
+            value={holidayName}
+            onChange={e => setHolidayName(e.target.value)}
+            placeholder={label || "例如：端午"}
+            className="zh-input w-full"
+          />
+          {!holidayName && label && (
+            <p className="text-xs mt-1" style={{ color: "#8A9AA8" }}>自动检测：{label}</p>
+          )}
+        </div>
+      )}
 
       <div>
         <label className="block text-sm font-medium mb-1.5" style={{ color: "#1F2D3D" }}>候选生成方式</label>

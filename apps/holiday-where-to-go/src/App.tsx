@@ -6,7 +6,8 @@ import { selectCandidates } from "./lib/selectCandidates";
 import { computeTripDays, detectHolidays, formatHolidayLabel } from "./lib/holidays";
 import { PromptBuilderForm } from "./components/PromptBuilderForm";
 import { CandidatePreview } from "./components/CandidatePreview";
-import { PromptPreview } from "./components/PromptPreview";
+import { PromptPreview, type PromptSummary } from "./components/PromptPreview";
+import { DestinationMap } from "./components/DestinationMap";
 
 const allCandidates = loadCandidates();
 
@@ -30,6 +31,16 @@ export default function App() {
   const effectiveHolidayName =
     holidayName || (startDate && endDate ? formatHolidayLabel(detectHolidays(startDate, endDate)) : "普通周末");
 
+  const selectedIds = useMemo(
+    () => new Set(selected.map((c) => c.id)),
+    [selected],
+  );
+
+  const coveredRegions = useMemo(
+    () => new Set(selected.filter((c) => c.lat != null && c.lng != null).map((c) => c.location)).size,
+    [selected],
+  );
+
   const detectedHolidayNames = useMemo(
     () => (startDate && endDate ? detectHolidays(startDate, endDate).map((h) => h.name) : []),
     [startDate, endDate],
@@ -47,6 +58,8 @@ export default function App() {
     setSelected(picked);
     const result = buildWhere2GoPrompt({
       originCity,
+      startDate,
+      endDate,
       tripDays,
       holidayName: effectiveHolidayName,
       holidayNames: detectedHolidayNames,
@@ -99,6 +112,14 @@ export default function App() {
           />
         </div>
 
+        {/* Map */}
+        <div className="mt-5">
+          <DestinationMap
+            allCandidates={allCandidates}
+            selectedIds={selectedIds}
+          />
+        </div>
+
         {/* Candidate List */}
         {selected.length > 0 && (
           <div className="mt-5">
@@ -113,7 +134,19 @@ export default function App() {
         {/* Prompt Output */}
         {generated ? (
           <div className="mt-5">
-            <PromptPreview prompt={prompt} onClear={handleClear} />
+            <PromptPreview
+              prompt={prompt}
+              onClear={handleClear}
+              summary={{
+                originCity,
+                startDate,
+                endDate,
+                tripDays,
+                selectedCount: selected.length,
+                coveredRegions,
+                selectionMode,
+              }}
+            />
           </div>
         ) : (
           <div className="zh-card mt-5 p-10 text-center flex flex-col items-center justify-center min-h-[200px]">

@@ -142,11 +142,27 @@ function getCandidatePoolNote(mode: CandidateSelectionMode): string {
 }
 
 export function buildWhere2GoPrompt(input: PromptBuilderInput): string {
-  const { originCity, tripDays, holidayName, holidayNames, preference, candidates, selectionMode } = input;
+  const { originCity, startDate, endDate, tripDays, holidayName, holidayNames, preference, candidates, selectionMode } = input;
+
+  const nights = tripDays - 1;
+  const dateRangeStr = `${startDate} 至 ${endDate}`;
 
   const holidaySection = holidayNames.length > 0
     ? `本次出行时段覆盖以下节假日：${holidayNames.join("、")}，请在搜索时优先参考该时段的实时价格。`
     : "本次出行时段为普通周末，请在搜索时按常规周末价格估算，非节假日调价。";
+
+  const dateInstruction = [
+    "## 重要：日期约束",
+    "",
+    `本次旅行日期范围：${dateRangeStr}，共 ${tripDays} 天 ${nights} 晚。`,
+    "",
+    "以下所有搜索和判断（机票价格、酒店价格、天气、交通拥挤度、景点开放状态等）都必须围绕该具体日期范围展开。",
+    "",
+    "禁止使用「近期」「假期期间」「这段时间」「节假日」等模糊时间表述。",
+    "请优先使用具体日期（如 6 月 25 日、6 月 26 日等）进行搜索和表述。",
+    "如果某个数据源需要以日期为关键词，请直接使用上述日期范围进行搜索。",
+    "",
+  ].join("\n");
 
   return [
     "# 假期去哪儿搜索任务",
@@ -158,10 +174,12 @@ export function buildWhere2GoPrompt(input: PromptBuilderInput): string {
     "## 用户输入",
     "",
     `- 出发地：${originCity}`,
-    `- 旅行时长：${tripDays} 天`,
+    `- 出行日期：${dateRangeStr}`,
+    `- 旅行时长：${tripDays} 天 ${nights} 晚`,
     `- ${holidaySection}`,
     `- 偏好：${renderPreference(preference)}`,
     "",
+    dateInstruction,
     "## 候选目的地",
     "",
     listCandidates(candidates),
@@ -206,19 +224,19 @@ export function buildWhere2GoPrompt(input: PromptBuilderInput): string {
     getPreferenceInstruction(preference, tripDays),
     "## 请搜索并估算以下信息",
     "",
-    "请针对候选目的地逐个检索或估算：",
+    `请针对候选目的地逐个检索或估算，所有价格和状态判断都必须基于 ${startDate} 至 ${endDate} 这个具体日期段：`,
     "",
     "- 平日酒店价格",
-    `- ${holidayName}期间酒店价格`,
+    `- ${dateRangeStr}期间酒店价格`,
     "- 酒店涨幅",
     "- 平日往返机票价格，如高铁更合适可填无",
-    `- ${holidayName}期间往返机票价格，如高铁更合适可填无`,
+    `- ${dateRangeStr}期间往返机票价格，如高铁更合适可填无`,
     "- 机票涨幅",
     "- 最合适交通方式",
     "- 单程交通时间",
     "- 推荐游玩天数",
     "- 核心景点 / 核心体验",
-    `- 是否适合本次旅行时长`,
+    `- 是否适合本次旅行时长（${tripDays} 天）`,
     "",
     "## 输出格式",
     "",
